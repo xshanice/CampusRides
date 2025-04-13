@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusRides Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 300px;
+        }
+        .login-container h2 {
+            margin-bottom: 20px;
+            text-align: center;
+            color: #4d2c91;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .logo-text {
+            background-color: #4d2c91;
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            color: #555;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4d2c91;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        button:hover {
+            background-color: #3a2171;
+        }
+        .error {
+            color: red;
+            font-size: 0.9em;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .help-text {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        .help-text p {
+            margin: 5px 0;
+        }
+        .help-text strong {
+            color: #4d2c91;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <div class="logo-text">CR</div>
+        </div>
+        <h2>Student Login</h2>
+        
+        <label for="studentId">Student ID</label>
+        <input type="text" id="studentId" placeholder="Enter your Student ID (e.g. A12345)">
+        
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Enter your password">
+        
+        <button onclick="login()">Login</button>
+        <div class="error" id="error"></div>
+        
+        <div class="help-text">
+            <p>For demo purposes, use:</p>
+            <p>Student ID: <strong>A12345</strong></p>
+            <p>Password: <strong>0000</strong></p>
+        </div>
+    </div>
+    <script>
+        function login() {
+            const studentId = document.getElementById('studentId').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error');
+            
+            // Simple static check (replace with real auth for production)
+            if (studentId === 'A12345' && password === '0000') {
+                localStorage.setItem('loggedIn', 'true');
+                localStorage.setItem('studentId', studentId);
+                window.location.href = 'ride.html';
+            } else {
+                errorDiv.textContent = 'Invalid Student ID or password';
+            }
+        }
+        
+        // Auto-redirect if already logged in
+        window.onload = function() {
+            if (localStorage.getItem('loggedIn') === 'true') {
+                window.location.href = 'ride.html';
+            }
+        }
+        
+        // Enable login on Enter key press
+        document.getElementById('password').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                login();
+            }
+        });
+    </script>
+</body>
+</html>
