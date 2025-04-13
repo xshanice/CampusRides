@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusRides</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', 'Segoe UI', sans-serif;
+        }
+        
+        :root {
+            --primary-color: #4d2c91;
+            --secondary-color: #ffc107;
+            --dark-color: #1a1a2e;
+            --light-color: #f7f7f7;
+            --accent-color: #1cd8d2;
+            --danger-color: #e73c7e;
+            --success-color: #23d160;
+        }
+        
+        body {
+            background-color: var(--light-color);
+            color: #333;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .status-bar {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 8px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .status-bar .time {
+            font-weight: bold;
+        }
+        
+        .status-bar .icons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .location-notice {
+            background-color: var(--secondary-color);
+            color: #000;
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .location-notice p {
+            margin-top: 5px;
+            font-size: 0.9rem;
+            font-weight: normal;
+        }
+        
+        .location-notice.hidden {
+            height: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        .map-container {
+            flex-grow: 1;
+            position: relative;
+            min-height: 40vh;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .menu-button {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background-color: white;
+            color: var(--primary-color);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 10;
+            font-size: 1.5rem;
+        }
+        
+        .student-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .app-container {
+            background: white;
+            border-radius: 20px 20px 0 0;
+            margin-top: -20px;
+            position: relative;
+            z-index: 5;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+            padding-bottom: 20px;
+            flex-shrink: 0;
+        }
+        
+        .drag-handle {
+            width: 40px;
+            height: 5px;
+            background-color: #ddd;
+            margin: 10px auto;
+            border-radius: 3px;
+        }
+        
+        .ride-options {
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 5px 20px 5px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #666;
+            width: 25%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .option.active {
+            color: var(--primary-color);
+        }
+        
+        .option-icon {
+            background-color: #f1f1f1;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 1.5rem;
+            transition: all 0.2s ease;
+        }
+        
+        .option.active .option-icon {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .destination-form {
+            padding: 15px;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+            position: relative;
+        }
+        
+        .location-input {
+            width: 100%;
+            padding: 15px 15px 15px 50px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            background-color: #f9f9f9;
+        }
+        
+        .location-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(77, 44, 145, 0.2);
+        }
+        
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            font-size: 1.2rem;
+        }
+        
+        .fare-container {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .fare-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .fare-amount {
+            display: flex;
+            align-items: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .currency {
+            font-size: 1rem;
+            margin-right: 5px;
+            opacity: 0.8;
+        }
+        
+        .fare-slider {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+        
+        .fare-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+        }
+        
+        .fare-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .payment-method {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        
+        .payment-method-left {
+            display: flex;
+            align-items: center;
+        }
+        
+        .payment-icon {
+            width: 30px;
+            height: 30px;
+            background-color: var(--secondary-color);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 15px;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .toggle-slider {
+            background-color: var(--success-color);
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+        
+        .location-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .location-details {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+        }
+        
+        .location-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        
+        .pickup-dot {
+            background-color: var(--success-color);
+        }
+        
+        .dropoff-dot {
+            background-color: var(--danger-color);
+        }
+        
+        .location-name {
+            font-size: 0.9rem;
+            max-width: 70%;
+        }
+        
+        .location-type {
+            background-color: #f1f1f1;
+            color: #666;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            margin-left: auto;
+        }
+        
+        .campus-selector {
+            background-color: #f1f1f1;
+            color: #333;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+        
+        .find-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 15px;
+            width: 100%;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .find-button:hover {
+            background-color: #3b1c7a;
+        }
+
+        .confirmation-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .confirmation-popup.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .popup-content {
+            background-color: white;
+            border-radius: 12px;
+            padding: 20px;
+            width: 85%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .popup-icon {
+            font-size: 3rem;
+            color: var(--success-color);
+            margin-bottom: 15px;
+        }
+        
+        .popup-title {
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+        
+        .popup-text {
+            margin-bottom: 20px;
+            color: #666;
+        }
+        
+        .popup-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .popup-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .popup-btn-cancel {
+            background-color: #f1f1f1;
+            color: #666;
+        }
+        
+        .popup-btn-confirm {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .driver-popup {
+            position: fixed;
+            bottom: -300px;
+            left: 0;
+            width: 100%;
+            background-color: white;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -5px 25px rgba(0,0,0,0.2);
+            z-index: 20;
+            transition: all 0.4s ease;
+            padding: 20px;
+        }
+        
+        .driver-popup.show {
+            bottom: 0;
+        }
+        
+        .driver-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .driver-photo {
+            width: 60px;
+            height: 60px;
+            background-color: #f1f1f1;
+            border-radius: 50%;
+            margin-right: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            color: #666;
+        }
+        
+        .driver-info {
+            flex-grow: 1;
+        }
+        
+        .driver-name {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: var(--primary-color);
+        }
+        
+        .driver-rating {
+            color: var(--secondary-color);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .driver-car {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .driver-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .driver-action {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            color: #666;
+        }
+        
+        .driver-action-icon {
+            width: 50px;
+            height: 50px;
+            background-color: #f1f1f1;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+        }
+        
+        .cancel-ride {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+
+        /* Sidebar menu */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100%;
+            background-color: white;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            z-index: 100;
+            transition: all 0.3s ease;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .sidebar.show {
+            left: 0;
+        }
+        
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .sidebar-logo {
+            width: 50px;
+            height: 50px;
+            background-color: var(--primary-color);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        
+        .sidebar-title {
+            color: var(--primary-color);
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+        
+        .sidebar-close {
+            margin-left: auto;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .sidebar-user {
+            display: flex;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 20px;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background-color: #f1f1f1;
+            border-radius: 50%;
+            margin-right: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #666;
+        }
+        
+        .user-info h3 {
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+        
+        .user-info p {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .sidebar-menu {
+            list-style: none;
+        }
+        
+        .sidebar-menu li {
+            margin-bottom: 15px;
+        }
+        
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            color: #333;
+            text-decoration: none;
+            font-size: 1rem;
+            padding: 10px 0;
+        }
+        
+        .sidebar-menu a:hover {
+            color: var(--primary-color);
+        }
+        
+        .menu-icon {
+            margin-right: 15px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 50;
+            visibility: hidden;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .overlay.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Animation */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .animated-pulse {
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Leaflet custom styles */
+        .leaflet-control-attribution {
+            display: none;
+        }
+        .campus-icon {
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            border: 2px solid white;
+        }
+        .driver-icon {
+            background-color: var(--secondary-color);
+            color: black;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            border: 2px solid white;
+        }
+        .user-icon {
+            background-color: #4285F4;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            border: 2px solid white;
+        }
+        
+        /* New styles for messaging */
+        .message-popup {
+            position: fixed;
+            bottom: -400px;
+            left: 0;
+            width: 100%;
+            height: 400px;
+            background-color: white;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -5px 25px rgba(0,0,0,0.2);
+            z-index: 30;
+            transition: all 0.4s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .message-popup.show {
+            bottom: 0;
+        }
+        
+        .message-header {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .message-close {
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .message-content {
+            flex-grow: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+        
+        .message-bubble {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 18px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        
+        .message-bubble.received {
+            background-color: #f1f1f1;
+            align-self: flex-start;
+        }
+        
+        .message-bubble.sent {
+            background-color: var(--primary-color);
+            color: white;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+        
+        .message-input-container {
+            padding: 10px;
+            border-top: 1px solid #eee;
+            display: flex;
+        }
+        
+        .message-input {
+            flex-grow: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            margin-right: 10px;
+        }
+        
+        .send-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        /* Waypoint styles */
+        .waypoint-marker {
+            background-color: white;
+            border: 2px solid var(--primary-color);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .waypoint-marker::after {
+            content: "";
+            width: 10px;
+            height: 10px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+        }
+        
+        /* Arrival and Rating Popups */
+        .arrival-popup, .rating-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .arrival-popup.show, .rating-popup.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .rating-stars {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .rating-star {
+            font-size: 2rem;
+            color: #ddd;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .rating-star.active {
+            color: var(--secondary-color);
+        }
+        
+        .driver-mode-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .driver-mode-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            cursor: pointer;
+        }
+        
+        .driver-mode-text {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        /* Location suggestions dropdown */
+        .location-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 0 0 8px 8px;
+            z-index: 100;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .suggestion-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .suggestion-item:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .suggestion-item .suggestion-name {
+            font-weight: bold;
+        }
+        
+        .suggestion-item .suggestion-type {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .input-group {
+            position: relative;
+        }
+
+        /* Driver mode popup */
+        .driver-mode-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .driver-mode-popup.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .driver-mode-content {
+            background-color: white;
+            border-radius: 12px;
+            padding: 20px;
+            width: 85%;
+            max-width: 400px;
+        }
+        
+        .driver-mode-title {
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+            text-align: center;
+        }
+        
+        .driver-mode-form {
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        
+        .driver-mode-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .driver-mode-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .driver-mode-cancel {
+            background-color: #f1f1f1;
+            color: #666;
+        }
+        
+        .driver-mode-confirm {
+            background-color: var(--primary-color);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="time">4:51</div>
+        <div class="icons">
+            <span>📶</span>
+            <span>🔋 78%</span>
+        </div>
+    </div>
+    
+    <!-- Location Notice -->
+    <div class="location-notice" id="locationNotice">
+        We couldn't find you on the map
+        <p>Tap here to give access to your location</p>
+    </div>
+    
+    <!-- Map Container -->
+    <div class="map-container">
+        <div id="map"></div>
+        <div class="menu-button" id="menuButton">☰</div>
+        <div class="student-badge">
+            <span>👨‍🎓</span>
+            <span>Student Verified</span>
+        </div>
+    </div>
+    
+    <div class="app-container">
+        <div class="drag-handle"></div>
+        
+        <!-- Ride Options -->
+        <div class="ride-options">
+            <div class="option active" data-type="ride">
+                <div class="option-icon">🚗</div>
+                <div>Ride</div>
+            </div>
+            <div class="option" data-type="shuttle">
+                <div class="option-icon">🚐</div>
+                <div>Shuttle</div>
+            </div>
+            <div class="option" data-type="campus">
+                <div class="option-icon">🏫</div>
+                <div>Campus</div>
+            </div>
+            <div class="option" data-type="schedule">
+                <div class="option-icon">📅</div>
+                <div>Schedule</div>
+            </div>
+        </div>
+        
+        <form class="destination-form">
+            <div class="input-group">
+                <span class="input-icon">📍</span>
+                <input type="text" class="location-input" id="pickupLocation" placeholder="Pick-up location" value="Current Location">
+            </div>
+            
+            <div class="input-group">
+                <span class="input-icon">🏁</span>
+                <input type="text" class="location-input" id="destinationLocation" placeholder="Where are you going?">
+                <div class="location-suggestions" id="locationSuggestions"></div>
+            </div>
+            
+            <div class="fare-container">
+                <div class="fare-header">
+                    <div>Your fare</div>
+                    <div class="fare-amount">
+                        <span class="currency">J$</span>
+                        <span id="fareAmount">890</span>
+                    </div>
+                </div>
+                
+                <input type="range" class="fare-slider" id="fareSlider" min="600" max="1200" value="890">
+                
+                <div class="fare-info">
+                    <div>Minimum: J$600</div>
+                    <div>Recommended: J$890</div>
+                    <div>Maximum: J$1200</div>
+                </div>
+            </div>
+            
+            <div class="payment-method">
+                <div class="payment-method-left">
+                    <div class="payment-icon">$</div>
+                    <div>
+                        <div>Cash</div>
+                    </div>
+                </div>
+                <div>›</div>
+            </div>
+            
+            <div class="payment-method">
+                <div class="payment-method-left">
+                    <div>
+                        <div>Auto-accept nearest student driver</div>
+                    </div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="autoAcceptToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            
+            <div class="location-item">
+                <div class="location-details">
+                    <div class="location-dot pickup-dot"></div>
+                    <div class="location-name">Current Location</div>
+                </div>
+                <select class="campus-selector">
+                    <option>Main Gate</option>
+                    <option>Faculty Building</option>
+                    <option selected>Entrance</option>
+                </select>
+            </div>
+            
+            <div class="location-item">
+                <div class="location-details">
+                    <div class="location-dot dropoff-dot"></div>
+                    <div class="location-name" id="destinationDisplay">UWI Mona Visitors' Lodge</div>
+                </div>
+                <select class="campus-selector">
+                    <option selected>Main</option>
+                    <option>Side</option>
+                    <option>Rear</option>
+                </select>
+            </div>
+            
+            <button type="button" id="findDriverBtn" class="find-button">
+                <span>Find a Student Driver</span>
+                <span>🚗</span>
+            </button>
+        </form>
+    </div>
+    
+    <!-- Sidebar Menu -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">CR</div>
+            <div class="sidebar-title">CampusRides</div>
+            <div class="sidebar-close" id="sidebarClose">×</div>
+        </div>
+        
+        <div class="sidebar-user">
+            <div class="user-avatar">👤</div>
+            <div class="user-info">
+                <h3>Shanice McKoy</h3>
+                <p>University of Technology, Jamaica</p>
+            </div>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li><a href="#"><span class="menu-icon">📃</span> My Rides</a></li>
+            <li><a href="#"><span class="menu-icon">⚙️</span> Settings</a></li>
+            <li><a href="#"><span class="menu-icon">🛡️</span> Safety</a></li>
+            <li><a href="#"><span class="menu-icon">❓</span> Help</a></li>
+            <li><a href="#"><span class="menu-icon">💰</span> Payment Methods</a></li>
+            <li><a href="#"><span class="menu-icon">📱</span> Invite Friends</a></li>
+            <li><a href="#"><span class="menu-icon">🔔</span> Notifications</a></li>
+        </ul>
+        
+        <div class="driver-mode-section">
+            <div class="driver-mode-text">Driver Mode</div>
+            <div class="driver-mode-toggle" id="driverModeToggle">
+                <div>Become a CampusRides driver</div>
+                <div>›</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="overlay" id="overlay"></div>
+    
+    <!-- Confirmation Popup -->
+    <div class="confirmation-popup" id="confirmationPopup">
+        <div class="popup-content">
+            <div class="popup-icon">✅</div>
+            <div class="popup-title">Confirm Your Ride</div>
+            <div class="popup-text">
+                You're about to request a ride to <b id="confirmDestination">UWI Mona</b> for <b id="confirmFare">J$890</b>. Do you want to proceed?
+            </div>
+            <div class="popup-buttons">
+                <button class="popup-btn popup-btn-cancel" id="cancelRequest">Cancel</button>
+                <button class="popup-btn popup-btn-confirm" id="confirmRequest">Confirm</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Driver Popup -->
+    <div class="driver-popup" id="driverPopup">
+        <div class="driver-header">
+            <div class="driver-photo">👨‍🎓</div>
+            <div class="driver-info">
+                <div class="driver-name">David Thomas</div>
+                <div class="driver-rating">★★★★★ 4.9 (128 rides)</div>
+                <div class="driver-car">Toyota Corolla - White • JAC 3245</div>
+            </div>
+        </div>
+        
+        <div>Arriving in <b id="arrivalTime">4 minutes</b></div>
+        
+        <div class="driver-actions">
+            <div class="driver-action">
+                <div class="driver-action-icon">📞</div>
+                <div>Call</div>
+            </div>
+            <div class="driver-action">
+                <div class="driver-action-icon">💬</div>
+                <div>Message</div>
+            </div>
+            <div class="driver-action">
+                <div class="driver-action-icon">📍</div>
+                <div>Share Trip</div>
+            </div>
+        </div>
+        
+        <div class="cancel-ride" id="cancelRide">Cancel Ride</div>
+    </div>
+
+    <!-- New Message Popup -->
+    <div class="message-popup" id="messagePopup">
+        <div class="message-header">
+            <div>Message Driver</div>
+            <div class="message-close" id="messageClose">×</div>
+        </div>
+        <div class="message-content" id="messageContent">
+            <!-- Messages will appear here -->
+        </div>
+        <div class="message-input-container">
+            <input type="text" class="message-input" id="messageInput" placeholder="Type your message...">
+            <div class="send-button" id="sendButton">➤</div>
+        </div>
+    </div>
+    
+    <!-- Arrival Popup -->
+    <div class="arrival-popup" id="arrivalPopup">
+        <div class="popup-content">
+            <div class="popup-icon">🚗</div>
+            <div class="popup-title">Driver Has Arrived!</div>
+            <div class="popup-text">
+                Your driver David has arrived at your pickup location. Please meet them outside.
+            </div>
+            <button class="popup-btn popup-btn-confirm" id="arrivalOk">OK</button>
+        </div>
+    </div>
+    
+    <!-- Rating Popup -->
+    <div class="rating-popup" id="ratingPopup">
+        <div class="popup-content">
+            <div class="popup-icon">⭐</div>
+            <div class="popup-title">Rate Your Driver</div>
+            <div class="popup-text">
+                How was your ride with David?
+            </div>
+            <div class="rating-stars">
+                <span class="rating-star" data-rating="1">☆</span>
+                <span class="rating-star" data-rating="2">☆</span>
+                <span class="rating-star" data-rating="3">☆</span>
+                <span class="rating-star" data-rating="4">☆</span>
+                <span class="rating-star" data-rating="5">☆</span>
+            </div>
+            <textarea class="message-input" placeholder="Add a comment (optional)" style="width: 100%; margin: 10px 0;"></textarea>
+            <div class="popup-buttons">
+                <button class="popup-btn popup-btn-cancel" id="skipRating">Skip</button>
+                <button class="popup-btn popup-btn-confirm" id="submitRating">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Driver Mode Popup -->
+    <div class="driver-mode-popup" id="driverModePopup">
+        <div class="driver-mode-content">
+            <div class="driver-mode-title">Become a Driver</div>
+            <div class="driver-mode-form">
+                <div class="form-group">
+                    <label class="form-label">Vehicle Make</label>
+                    <input type="text" class="form-input" id="vehicleMake" placeholder="e.g. Toyota">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Vehicle Model</label>
+                    <input type="text" class="form-input" id="vehicleModel" placeholder="e.g. Corolla">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">License Plate</label>
+                    <input type="text" class="form-input" id="licensePlate" placeholder="e.g. JAC 3245">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Vehicle Color</label>
+                    <input type="text" class="form-input" id="vehicleColor" placeholder="e.g. White">
+                </div>
+            </div>
+            <div class="driver-mode-buttons">
+                <button class="driver-mode-btn driver-mode-cancel" id="driverModeCancel">Cancel</button>
+                <button class="driver-mode-btn driver-mode-confirm" id="driverModeConfirm">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Previous variables and initialization
+            let uwiMarker, utechMarker, pickupMarker, destinationMarker;
+            let map, driverMarker, driverPath, waypoints = [];
+            const jamaicaCoords = [18.0179, -76.8099];
+            let isDriverMode = false;
+            
+            // Database of Jamaican universities and colleges with coordinates
+            const jamaicanCampuses = [
+                // Public Universities
+                {
+                    name: "The University of the West Indies (UWI) Mona Campus",
+                    type: "University",
+                    location: "Kingston",
+                    coords: [18.0059, -76.7494],
+                    gates: ["Main Gate", "Faculty Building", "Entrance"]
+                },
+                {
+                    name: "University of Technology, Jamaica (UTech)",
+                    type: "University",
+                    location: "Kingston",
+                    coords: [18.0179, -76.7419],
+                    gates: ["Main Entrance", "Back Gate", "Engineering Block"]
+                },
+                {
+                    name: "Edna Manley College of the Visual and Performing Arts",
+                    type: "University",
+                    location: "Kingston",
+                    coords: [17.9769, -76.7839],
+                    gates: ["Main Entrance", "Performing Arts Entrance"]
+                },
+                {
+                    name: "Mico University College",
+                    type: "University",
+                    location: "Kingston",
+                    coords: [17.9986, -76.7825],
+                    gates: ["Main Gate", "Faculty Entrance"]
+                },
+                {
+                    name: "Caribbean Maritime University (CMU)",
+                    type: "University",
+                    location: "Kingston",
+                    coords: [17.9644, -76.7889],
+                    gates: ["Main Entrance", "Maritime Gate"]
+                },
+                {
+                    name: "Northern Caribbean University (NCU)",
+                    type: "University",
+                    location: "Mandeville, Manchester",
+                    coords: [18.0425, -77.5033],
+                    gates: ["Main Gate", "Adventist Entrance"]
+                },
+                {
+                    name: "University of the Commonwealth Caribbean (UCC)",
+                    type: "University",
+                    location: "Kingston",
+                    coords: [18.0014, -76.7925],
+                    gates: ["Main Campus", "Downtown Campus"]
+                },
+                {
+                    name: "International University of the Caribbean (IUC)",
+                    type: "University",
+                    location: "Kingston",
+                    coords: [18.0136, -76.7989],
+                    gates: ["Main Entrance", "Theology Building"]
+                },
+                
+                // Community Colleges
+                {
+                    name: "EXED Community College (Excelsior)",
+                    type: "Community College",
+                    location: "Kingston",
+                    coords: [18.0083, -76.7797],
+                    gates: ["Main Gate", "Student Entrance"]
+                },
+                {
+                    name: "Portmore Community College",
+                    type: "Community College",
+                    location: "Portmore, St. Catherine",
+                    coords: [17.9600, -76.8814],
+                    gates: ["Main Entrance", "Back Gate"]
+                },
+                {
+                    name: "Montego Bay Community College",
+                    type: "Community College",
+                    location: "Montego Bay, St. James",
+                    coords: [18.4767, -77.9189],
+                    gates: ["Main Gate", "Faculty Entrance"]
+                },
+                {
+                    name: "Brown's Town Community College",
+                    type: "Community College",
+                    location: "Brown's Town, St. Ann",
+                    coords: [18.4000, -77.3500],
+                    gates: ["Main Entrance", "Student Parking"]
+                },
+                {
+                    name: "Moneague College",
+                    type: "Community College",
+                    location: "Moneague, St. Ann",
+                    coords: [18.2769, -77.1136],
+                    gates: ["Main Gate", "Faculty Entrance"]
+                },
+                {
+                    name: "Knox Community College",
+                    type: "Community College",
+                    location: "Spalding, Clarendon",
+                    coords: [18.2167, -77.4667],
+                    gates: ["Main Entrance", "Back Gate"]
+                },
+                {
+                    name: "Bethlehem Moravian College",
+                    type: "Community College",
+                    location: "Malvern, St. Elizabeth",
+                    coords: [17.9667, -77.7000],
+                    gates: ["Main Gate", "Chapel Entrance"]
+                },
+                {
+                    name: "College of Agriculture, Science and Education (CASE)",
+                    type: "Community College",
+                    location: "Passley Gardens, Portland",
+                    coords: [18.1667, -76.4500],
+                    gates: ["Main Entrance", "Agricultural Block"]
+                },
+                {
+                    name: "Trench Town Polytechnic College",
+                    type: "Community College",
+                    location: "Kingston",
+                    coords: [17.9833, -76.8000],
+                    gates: ["Main Gate", "Technical Block"]
+                }
+            ];
+            
+            // New variables for messaging and trip state
+            let tripState = 'waiting'; // waiting, enroute, arrived, completed
+            let messageHistory = [];
+            const automatedResponses = [
+                "I'm on my way! ETA 4 minutes.",
+                "I've just arrived at your location.",
+                "Thanks for riding with CampusRides!",
+                "Please be ready when I arrive.",
+                "I'm running a couple minutes late, sorry!",
+                "I'll be there shortly."
+            ];
+            
+            // Initialize the map
+            function initMap() {
+                map = L.map('map').setView(jamaicaCoords, 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                
+                // Add all campus markers
+                jamaicanCampuses.forEach(campus => {
+                    const icon = L.divIcon({
+                        className: 'campus-icon',
+                        html: campus.type === 'University' ? 'U' : 'CC',
+                        iconSize: [30, 30]
+                    });
+                    
+                    const marker = L.marker(campus.coords, {
+                        icon: icon
+                    }).addTo(map).bindPopup(`<b>${campus.name}</b><br>${campus.location}`);
+                });
+                
+                // Set destination default
+                $("#destinationLocation").val("UWI Mona Visitors' Lodge");
+            }
+            
+            initMap();
+            
+            // Function to show location suggestions
+            function showSuggestions(query) {
+                const suggestionsContainer = $("#locationSuggestions");
+                suggestionsContainer.empty();
+                
+                if (!query || query.length < 2) {
+                    suggestionsContainer.hide();
+                    return;
+                }
+                
+                const queryLower = query.toLowerCase();
+                const matches = jamaicanCampuses.filter(campus => 
+                    campus.name.toLowerCase().includes(queryLower) || 
+                    campus.location.toLowerCase().includes(queryLower)
+                );
+                
+                if (matches.length > 0) {
+                    matches.forEach(campus => {
+                        const item = $(`
+                            <div class="suggestion-item" data-name="${campus.name}" data-coords="${campus.coords}">
+                                <div class="suggestion-name">${campus.name}</div>
+                                <div class="suggestion-type">${campus.type} - ${campus.location}</div>
+                            </div>
+                        `);
+                        
+                        item.click(function() {
+                            $("#destinationLocation").val(campus.name);
+                            $("#destinationDisplay").text(campus.name);
+                            $("#confirmDestination").text(campus.name);
+                            suggestionsContainer.hide();
+                            
+                            // Update campus gates dropdown
+                            const gatesDropdown = $(".location-item:last .campus-selector");
+                            gatesDropdown.empty();
+                            campus.gates.forEach(gate => {
+                                gatesDropdown.append(`<option>${gate}</option>`);
+                            });
+                            
+                            // Center map on selected campus
+                            map.setView(campus.coords, 15);
+                            
+                            // Add destination marker if not exists
+                            if (destinationMarker) {
+                                map.removeLayer(destinationMarker);
+                            }
+                            
+                            const destinationIcon = L.divIcon({
+                                className: 'user-icon',
+                                html: '🏁',
+                                iconSize: [30, 30]
+                            });
+                            
+                            destinationMarker = L.marker(campus.coords, {
+                                icon: destinationIcon,
+                                title: campus.name
+                            }).addTo(map).bindPopup(`<b>Destination:</b> ${campus.name}`);
+                        });
+                        
+                        suggestionsContainer.append(item);
+                    });
+                    
+                    suggestionsContainer.show();
+                } else {
+                    suggestionsContainer.hide();
+                }
+            }
+            
+            // New messaging functions
+            function openMessagePopup() {
+                $("#messagePopup").addClass("show");
+                scrollMessagesToBottom();
+            }
+            
+            function closeMessagePopup() {
+                $("#messagePopup").removeClass("show");
+            }
+            
+            function addMessage(text, isReceived) {
+                const messageClass = isReceived ? 'received' : 'sent';
+                const messageHtml = `<div class="message-bubble ${messageClass}">${text}</div>`;
+                $("#messageContent").append(messageHtml);
+                scrollMessagesToBottom();
+                
+                // Add to history
+                messageHistory.push({
+                    text: text,
+                    received: isReceived,
+                    timestamp: new Date()
+                });
+            }
+            
+            function scrollMessagesToBottom() {
+                const container = $("#messageContent");
+                container.scrollTop(container[0].scrollHeight);
+            }
+            
+            function sendAutomatedResponse() {
+                if (messageHistory.length > 0 && !messageHistory[messageHistory.length-1].received) {
+                    // Only respond if last message was from user
+                    setTimeout(() => {
+                        let response;
+                        
+                        if (tripState === 'waiting') {
+                            response = automatedResponses[0]; // On my way
+                        } else if (tripState === 'enroute') {
+                            response = automatedResponses[1]; // Arrived
+                        } else if (tripState === 'arrived') {
+                            response = automatedResponses[2]; // Thanks
+                        } else {
+                            // Random response
+                            response = automatedResponses[Math.floor(Math.random() * automatedResponses.length)];
+                        }
+                        
+                        addMessage(response, true);
+                    }, 1000 + Math.random() * 2000); // Random delay 1-3s
+                }
+            }
+            
+            // Enhanced driver simulation with longer duration
+            function simulateTrip() {
+                tripState = 'enroute';
+                updateDriverStatus("Driver is on the way");
+                
+                // Create driver marker if not exists
+                if (!driverMarker) {
+                    const driverIcon = L.divIcon({
+                        className: 'driver-icon',
+                        html: '🚗',
+                        iconSize: [30, 30]
+                    });
+                    
+                    driverMarker = L.marker([18.0289, -76.7599], {icon: driverIcon})
+                        .addTo(map)
+                        .bindPopup("Your driver - David Thomas");
+                }
+                
+                // Create waypoints along the route
+                const startPoint = driverMarker.getLatLng();
+                const endPoint = pickupMarker.getLatLng();
+                
+                // Clear existing waypoints
+                waypoints.forEach(wp => map.removeLayer(wp));
+                waypoints = [];
+                
+                // Create 5 waypoints along the route for smoother animation
+                for (let i = 1; i <= 5; i++) {
+                    const ratio = i / 6;
+                    const lat = startPoint.lat + (endPoint.lat - startPoint.lat) * ratio;
+                    const lng = startPoint.lng + (endPoint.lng - startPoint.lng) * ratio;
+                    
+                    const waypoint = L.marker([lat, lng], {
+                        icon: L.divIcon({
+                            className: 'waypoint-marker',
+                            iconSize: [20, 20]
+                        })
+                    }).addTo(map);
+                    
+                    waypoints.push(waypoint);
+                }
+                
+                // Create path
+                if (driverPath) map.removeLayer(driverPath);
+                driverPath = L.polyline([startPoint, ...waypoints.map(w => w.getLatLng()), endPoint], {
+                    color: '#4d2c91',
+                    weight: 5
+                }).addTo(map);
+                
+                // Animate through waypoints with longer duration
+                let currentWaypoint = 0;
+                const totalWaypoints = waypoints.length;
+                let arrivalTimer;
+                
+                function moveToNextWaypoint() {
+                    if (currentWaypoint < totalWaypoints) {
+                        const target = waypoints[currentWaypoint].getLatLng();
+                        driverMarker.setLatLng(target);
+                        
+                        // Update status based on progress
+                        const progress = ((currentWaypoint + 1) / (totalWaypoints + 1)) * 100;
+                        const minutesLeft = Math.round((totalWaypoints - currentWaypoint) * 0.8); // Simulate time
+                        updateDriverStatus(`Driver is ${Math.round(progress)}% of the way (${minutesLeft} min)`);
+                        
+                        currentWaypoint++;
+                        
+                        // Move to next waypoint after delay (longer delay for slower animation)
+                        setTimeout(moveToNextWaypoint, 3000);
+                    } else {
+                        // Final move to pickup location
+                        driverMarker.setLatLng(endPoint);
+                        updateDriverStatus("Driver has arrived");
+                        tripState = 'arrived';
+                        
+                        // Show arrival popup
+                        $("#arrivalPopup").addClass("show");
+                        
+                        // After 5 seconds, mark trip as completed and show rating
+                        arrivalTimer = setTimeout(() => {
+                            updateDriverStatus("Trip completed");
+                            tripState = 'completed';
+                            $("#driverPopup").removeClass("show");
+                            $("#arrivalPopup").removeClass("show");
+                            
+                            // Show rating popup after a delay
+                            setTimeout(() => {
+                                $("#ratingPopup").addClass("show");
+                            }, 1000);
+                        }, 10000); // 10 seconds after arrival
+                    }
+                }
+                
+                // Start the animation
+                moveToNextWaypoint();
+            }
+            
+            function updateDriverStatus(status) {
+                $("#arrivalTime").text(status);
+            }
+            
+            // Event listeners for destination input
+            $("#destinationLocation").on("input", function() {
+                showSuggestions($(this).val());
+            });
+            
+            // Hide suggestions when clicking elsewhere
+            $(document).click(function(e) {
+                if (!$(e.target).closest("#destinationLocation").length && 
+                    !$(e.target).closest("#locationSuggestions").length) {
+                    $("#locationSuggestions").hide();
+                }
+            });
+            
+            // Event listeners for messaging
+            $("#sendButton").click(sendMessage);
+            $("#messageInput").keypress(function(e) {
+                if (e.which === 13) sendMessage();
+            });
+            
+            function sendMessage() {
+                const messageText = $("#messageInput").val().trim();
+                if (messageText) {
+                    addMessage(messageText, false);
+                    $("#messageInput").val('');
+                    sendAutomatedResponse();
+                }
+            }
+            
+            // Update message button in driver popup
+            $(".driver-action-icon").eq(1).click(function() {
+                openMessagePopup();
+            });
+            
+            $("#messageClose").click(closeMessagePopup);
+            
+            // Update confirm ride button to start full simulation
+            $("#confirmRequest").click(function() {
+                $("#confirmationPopup").removeClass("show");
+                $("#driverPopup").addClass("show");
+                simulateTrip();
+                
+                // Add initial automated message
+                setTimeout(() => {
+                    addMessage("Hi, I'm David your driver. I'm on my way to pick you up!", true);
+                }, 1500);
+            });
+            
+            // Arrival popup OK button
+            $("#arrivalOk").click(function() {
+                $("#arrivalPopup").removeClass("show");
+            });
+            
+            // Rating stars interaction
+            $(".rating-star").hover(function() {
+                const rating = $(this).data("rating");
+                $(".rating-star").each(function(index) {
+                    if (index < rating) {
+                        $(this).text("★").addClass("active");
+                    } else {
+                        $(this).text("☆").removeClass("active");
+                    }
+                });
+            });
+            
+            $(".rating-star").click(function() {
+                const rating = $(this).data("rating");
+                $(".rating-star").each(function(index) {
+                    if (index < rating) {
+                        $(this).text("★").addClass("active");
+                    } else {
+                        $(this).text("☆").removeClass("active");
+                    }
+                });
+            });
+            
+            // Submit rating
+            $("#submitRating").click(function() {
+                const rating = $(".rating-star.active").length;
+                if (rating > 0) {
+                    alert(`Thanks for your ${rating}-star rating!`);
+                    $("#ratingPopup").removeClass("show");
+                } else {
+                    alert("Please select a rating");
+                }
+            });
+            
+            // Skip rating
+            $("#skipRating").click(function() {
+                $("#ratingPopup").removeClass("show");
+            });
+            
+            // Location notice click event
+            $("#locationNotice").click(function() {
+                $(this).addClass("hidden");
+                
+                // Simulate getting user's location
+                if (map) {
+                    map.setView(jamaicaCoords, 13);
+                    
+                    // Create a marker for current location
+                    if (!pickupMarker) {
+                        const userIcon = L.divIcon({
+                            className: 'user-icon',
+                            html: '📍',
+                            iconSize: [30, 30]
+                        });
+                        
+                        pickupMarker = L.marker(jamaicaCoords, {
+                            icon: userIcon,
+                            title: "Your Location"
+                        }).addTo(map);
+                    }
+                }
+            });
+            
+            // Fare slider event
+            $("#fareSlider").on("input", function() {
+                $("#fareAmount").text($(this).val());
+                $("#confirmFare").text("J$" + $(this).val());
+            });
+            
+            // Destination input event
+            $("#destinationLocation").on("input", function() {
+                let destinationText = $(this).val() || "Select destination";
+                $("#destinationDisplay").text(destinationText);
+                $("#confirmDestination").text(destinationText);
+            });
+            
+            // Ride option selection
+            $(".option").click(function() {
+                $(".option").removeClass("active");
+                $(this).addClass("active");
+                
+                let selectedType = $(this).data("type");
+                // Additional logic for different ride types can go here
+            });
+
+            // Find driver button click event
+            $("#findDriverBtn").click(function() {
+                // Show confirmation popup
+                $("#confirmationPopup").addClass("show");
+            });
+
+            // Confirmation popup buttons
+            $("#cancelRequest").click(function() {
+                $("#confirmationPopup").removeClass("show");
+            });
+
+            // Cancel ride button
+            $("#cancelRide").click(function() {
+                $("#driverPopup").removeClass("show");
+                
+                // Remove driver marker and path
+                if (driverMarker) {
+                    map.removeLayer(driverMarker);
+                }
+                if (driverPath) {
+                    map.removeLayer(driverPath);
+                }
+            });
+
+            // Sidebar toggle
+            $("#menuButton").click(function() {
+                $("#sidebar").addClass("show");
+                $("#overlay").addClass("show");
+            });
+
+            $("#sidebarClose, #overlay").click(function() {
+                $("#sidebar").removeClass("show");
+                $("#overlay").removeClass("show");
+            });
+
+            // Driver mode toggle
+            $("#driverModeToggle").click(function() {
+                $("#driverModePopup").addClass("show");
+                $("#overlay").addClass("show");
+            });
+
+            // Driver mode popup buttons
+            $("#driverModeCancel").click(function() {
+                $("#driverModePopup").removeClass("show");
+                $("#overlay").removeClass("show");
+            });
+
+            $("#driverModeConfirm").click(function() {
+                const make = $("#vehicleMake").val().trim();
+                const model = $("#vehicleModel").val().trim();
+                const plate = $("#licensePlate").val().trim();
+                const color = $("#vehicleColor").val().trim();
+                
+                if (make && model && plate && color) {
+                    isDriverMode = true;
+                    alert(`Driver mode activated for ${color} ${make} ${model} (${plate})`);
+                    $("#driverModePopup").removeClass("show");
+                    $("#overlay").removeClass("show");
+                    
+                    // Update UI for driver mode
+                    $(".driver-mode-text").text("Driver Mode: Active");
+                    $("#findDriverBtn").text("Go Online as Driver");
+                    
+                    // You could add additional driver-specific UI changes here
+                } else {
+                    alert("Please fill in all vehicle details");
+                }
+            });
+
+            // Set current time in status bar
+            function updateClock() {
+                const now = new Date();
+                let hours = now.getHours();
+                const minutes = now.getMinutes();
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12; // the hour '0' should be '12'
+                const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+                
+                $('.time').text(hours + ':' + minutesStr + ' ' + ampm);
+            }
+
+            // Update clock immediately and then every minute
+            updateClock();
+            setInterval(updateClock, 60000);
+
+            // Simulate app initialization delay
+            setTimeout(function() {
+                // If you want to simulate the app finding the user's location automatically
+                $("#locationNotice").click();
+            }, 1000);
+            
+            // Initialize with a sample message
+            setTimeout(() => {
+                if ($("#driverPopup").hasClass("show")) {
+                    addMessage("Hi, I'm David your driver. I'm on my way to pick you up!", true);
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
