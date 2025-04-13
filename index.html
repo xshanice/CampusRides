@@ -119,25 +119,32 @@
             
             // Simple static check (replace with real auth for production)
             if (studentId === 'A12345' && password === '0000') {
-                localStorage.setItem('loggedIn', 'true');
-                localStorage.setItem('studentId', studentId);
+                // Only store a session flag, not the actual credentials
+                sessionStorage.setItem('isAuthenticated', 'true');
+                
+                // Redirect to the ride page
                 window.location.href = 'ride.html';
             } else {
                 errorDiv.textContent = 'Invalid Student ID or password';
             }
         }
         
-        // Auto-redirect if already logged in
+        // Clear any previous authentication on page load
         window.onload = function() {
-            if (localStorage.getItem('loggedIn') === 'true') {
-                window.location.href = 'ride.html';
-            }
+            // This ensures the user always needs to log in when they visit the login page
+            sessionStorage.removeItem('isAuthenticated');
         }
         
         // Enable login on Enter key press
         document.getElementById('password').addEventListener('keypress', function(event) {
             if (event.key === 'Enter') {
                 login();
+            }
+        });
+        
+        document.getElementById('studentId').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                document.getElementById('password').focus();
             }
         });
     </script>
